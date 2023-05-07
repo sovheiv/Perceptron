@@ -1,0 +1,22 @@
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  light_formatter:
+    format: "in {funcName}: {message}"
+    datefmt: '%H:%M:%S'
+    style: "{"
+
+handlers:
+  console_handler:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: light_formatter
+
+loggers:
+  app:
+    level: INFO
+    handlers:
+    - console_handler
+    propagate: false
+
