@@ -24,19 +24,19 @@ class AIModel:
 
         if save_training_stat:
             training_stat = [{**self.get_errors_sum(), **{"weights": self.weights_s}}]
+
         for batch in self.training_data:
-            self.back_propagation2(batch["data"], batch["answer"])
+            self.back_propagation(batch["data"], batch["answer"])
+
             if save_training_stat:
                 training_stat.append(
                     {**self.get_errors_sum(), **{"weights": self.weights_s}}
                 )
 
-        self.save_json(stats=training_stat, weights=self.weights.tolist())
-        return training_stat[-1]
-
-    @property
-    def weights_s(self):
-        return [round(float(x), 3) for x in self.weights]
+        if save_training_stat:
+            self.save_json(stats=training_stat, weights=self.weights.tolist())
+            return training_stat[-1]
+        self.save_json(weights=self.weights.tolist())
 
     def get_errors_sum(self):
         all_errors = [
@@ -48,35 +48,16 @@ class AIModel:
         return {
             "errors_val": errors_val,
             "wrong_answers": wrong_answers,
-            "max_error": max(all_errors),
+            "max_error": max(all_errors, key=abs),
             "avg_error": errors_val / len(all_errors),
         }
 
     def back_propagation(self, input: list[int], real_answer):
         """1 iteration"""
 
-        predicted_answer = self.solve(input)
-        error = real_answer - predicted_answer
-        adjustment = float(error * (predicted_answer * (1 - predicted_answer)))
-
-        npinput = np.array(input)
-        adjustments = npinput * adjustment
-        self.weights += adjustments
-
-        logger.info(
-            f"Error: {round(error,3)}\n"
-            f"Adjusment: {round(adjustment,3)}\n"
-            f"Input: {input} {real_answer}\n"
-            f"Adjusments: {adjustments}\n"
-            f"New weights: {self.weights}\n"
-        )
-
-    def back_propagation2(self, input: list[int], real_answer):
-        """1 iteration"""
-
         answer = self.solve(input)
         error = real_answer - answer
-        adjustment = error
+        adjustment = (error * 4) ** 3
 
         npinput = np.array(input)
         adjustments = npinput * adjustment
@@ -89,31 +70,17 @@ class AIModel:
             f"Adjusments: {adjustments}\n"
             f"New weights: {self.weights}\n"
         )
-
-    def get_answer(self, input: list[int]):
-        multiplied = self.weights * input
-        weighted_sum = sum(multiplied)
-        weighted_sum = np.dot(self.weights, input)
-
-        answer = self.sigmoid(weighted_sum)
-
-        logger.debug(
-            f"Input: {input}\n"
-            f"Weights: {self.weights}\n"
-            f"Multipied: {multiplied}\n"
-            f"Weighted sum: {weighted_sum}\n"
-            f"Answer: {answer}\n"
-        )
-        return answer
 
     def solve(self, input: list[int]):
         return self.sigmoid(np.dot(self.weights, input))
 
-    def solve_np(self, input: list[int]):
-        return self.solve(np.array(input))
+    @property
+    def weights_s(self):
+        return [round(float(x), 3) for x in self.weights]
 
     @staticmethod
     def sigmoid(x):
+        x = np.clip(x, -500, 500)
         return 1 / (1 + np.exp(-x))
 
     @staticmethod
